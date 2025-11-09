@@ -69,7 +69,7 @@ class PushupDetector {
     const state = this.stateMachine.state;
 
     if (state === ExerciseState.READY || state === ExerciseState.TOP) {
-      if (smoothElbow > 150 && smoothBody >= 140 && this.stateMachine.canTransition()) {
+      if (smoothElbow > 150 && smoothBody >= 140 && this.stateMachine.canStartNewRep()) {
         this.stateMachine.changeState(ExerciseState.TOP);
         if (formIssues.length === 0) {
           feedback = 'Ready - Go down slowly';
@@ -78,14 +78,14 @@ class PushupDetector {
     }
 
     if (state === ExerciseState.TOP || state === ExerciseState.READY) {
-      if (smoothElbow < 140 && this.stateMachine.canTransition()) {
+      if (smoothElbow < 140) {
         this.stateMachine.changeState(ExerciseState.DESCENDING);
         feedback = 'Descending - Keep control';
       }
     }
 
     if (state === ExerciseState.DESCENDING) {
-      if (smoothElbow < 100 && this.stateMachine.canTransition()) {
+      if (smoothElbow < 100) {
         this.stateMachine.changeState(ExerciseState.BOTTOM);
         feedback = 'Good depth - Push up';
         this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, 'Push up');
@@ -93,14 +93,14 @@ class PushupDetector {
     }
 
     if (state === ExerciseState.BOTTOM) {
-      if (smoothElbow > 110 && this.stateMachine.canTransition()) {
+      if (smoothElbow > 110) {
         this.stateMachine.changeState(ExerciseState.ASCENDING);
         feedback = 'Ascending - Keep pushing';
       }
     }
 
     if (state === ExerciseState.ASCENDING) {
-      if (smoothElbow > 150 && this.stateMachine.canTransition()) {
+      if (smoothElbow > 150) {
         const repData = this.stateMachine.completeRep();
         if (repData) {
           feedback = `Excellent! Rep ${repData.count} - Quality: ${repData.quality}%`;
@@ -224,7 +224,7 @@ class SquatDetector {
     const state = this.stateMachine.state;
 
     if (state === ExerciseState.READY || state === ExerciseState.TOP) {
-      if (smoothKnee > 150 && smoothBack >= 120 && this.stateMachine.canTransition()) {
+      if (smoothKnee > 150 && smoothBack >= 120 && this.stateMachine.canStartNewRep()) {
         this.stateMachine.changeState(ExerciseState.TOP);
         if (formIssues.length === 0) {
           feedback = 'Ready - Squat down slowly';
@@ -233,14 +233,14 @@ class SquatDetector {
     }
 
     if (state === ExerciseState.TOP || state === ExerciseState.READY) {
-      if (smoothKnee < 140 && this.stateMachine.canTransition()) {
+      if (smoothKnee < 140) {
         this.stateMachine.changeState(ExerciseState.DESCENDING);
         feedback = 'Descending - Control the movement';
       }
     }
 
     if (state === ExerciseState.DESCENDING) {
-      if (smoothKnee < 110 && this.stateMachine.canTransition()) {
+      if (smoothKnee < 110) {
         this.stateMachine.changeState(ExerciseState.BOTTOM);
         feedback = 'Good depth - Stand up';
         this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, 'Stand up');
@@ -248,14 +248,14 @@ class SquatDetector {
     }
 
     if (state === ExerciseState.BOTTOM) {
-      if (smoothKnee > 120 && this.stateMachine.canTransition()) {
+      if (smoothKnee > 120) {
         this.stateMachine.changeState(ExerciseState.ASCENDING);
         feedback = 'Ascending - Drive through heels';
       }
     }
 
     if (state === ExerciseState.ASCENDING) {
-      if (smoothKnee > 150 && this.stateMachine.canTransition()) {
+      if (smoothKnee > 150) {
         const repData = this.stateMachine.completeRep();
         if (repData) {
           feedback = `Perfect! Rep ${repData.count} - Quality: ${repData.quality}%`;

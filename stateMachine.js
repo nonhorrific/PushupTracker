@@ -16,16 +16,17 @@ class RepStateMachine {
     this.repCount = 0;
     this.repQuality = 100;
     this.formIssuesDuringRep = [];
-    this.minStateTime = 200;
     this.angleHistory = [];
+    this.lastRepCompletionTime = 0;
+    this.repCooldown = 300;
   }
 
   getTimeInState() {
     return Date.now() - this.stateStartTime;
   }
 
-  canTransition() {
-    return this.getTimeInState() >= this.minStateTime;
+  canStartNewRep() {
+    return Date.now() - this.lastRepCompletionTime >= this.repCooldown;
   }
 
   changeState(newState) {
@@ -59,6 +60,7 @@ class RepStateMachine {
     }
 
     this.repCount++;
+    this.lastRepCompletionTime = Date.now();
     const repData = {
       count: this.repCount,
       quality: Math.round(this.repQuality),
@@ -68,7 +70,7 @@ class RepStateMachine {
     };
 
     this.changeState(ExerciseState.COMPLETED);
-    setTimeout(() => this.changeState(ExerciseState.READY), 500);
+    this.changeState(ExerciseState.READY);
 
     return repData;
   }
@@ -81,5 +83,6 @@ class RepStateMachine {
     this.repQuality = 100;
     this.formIssuesDuringRep = [];
     this.angleHistory = [];
+    this.lastRepCompletionTime = 0;
   }
 }
