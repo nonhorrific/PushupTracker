@@ -4,8 +4,7 @@
 AI-powered push-up tracker that runs **entirely in your browser** — no installs, no servers.  
 Uses **TensorFlow.js** and **Web Speech API** to track your form, count reps, and give **real-time voice feedback**.
 
-👉 **[Live Demo](https://your-username.github.io/pushup-tracker/)**  
-*(Replace with your actual GitHub Pages link)*
+👉 **[Live Demo](https://nonhorrific.github.io/PushupTracker/)**  
 
 ---
 
