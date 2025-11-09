@@ -10,6 +10,8 @@ class AudioManager {
     };
     this.elevenLabsEnabled = true;
     this.currentAudio = null;
+    this.specialAudio = null;
+    this.isPlayingSpecial = false;
   }
 
   async generateSpeech(text, personality) {
@@ -81,6 +83,10 @@ class AudioManager {
   async speak(text, personality) {
     if (!text) return false;
 
+    if (this.isPlayingSpecial) {
+      return false;
+    }
+
     const audioUrl = await this.generateSpeech(text, personality);
 
     if (audioUrl) {
@@ -88,6 +94,42 @@ class AudioManager {
     } else {
       return this.fallbackToWebSpeech(text);
     }
+  }
+
+  async playSpecialAudio(audioFilePath) {
+    try {
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      }
+
+      speechSynthesis.cancel();
+
+      this.isPlayingSpecial = true;
+      this.specialAudio = new Audio(audioFilePath);
+
+      this.specialAudio.onended = () => {
+        this.isPlayingSpecial = false;
+        this.specialAudio = null;
+      };
+
+      await this.specialAudio.play();
+      return true;
+    } catch (error) {
+      console.error('Error playing special audio:', error);
+      this.isPlayingSpecial = false;
+      this.specialAudio = null;
+      return false;
+    }
+  }
+
+  stopSpecialAudio() {
+    if (this.specialAudio) {
+      this.specialAudio.pause();
+      this.specialAudio.currentTime = 0;
+      this.specialAudio = null;
+    }
+    this.isPlayingSpecial = false;
   }
 
   fallbackToWebSpeech(text) {
@@ -108,6 +150,7 @@ class AudioManager {
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
     }
+    this.stopSpecialAudio();
     speechSynthesis.cancel();
   }
 

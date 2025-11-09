@@ -6,6 +6,7 @@ let personalBestManager = null;
 let audioManager = null;
 let currentBestScore = 0;
 let hasShownNewRecord = false;
+let hasPlayedDootDoot = false;
 
 function switchScreen(from, to) {
   document.getElementById(from).classList.remove('active');
@@ -49,6 +50,7 @@ async function initializeTracker() {
 
     currentBestScore = personalBestManager.getBestScore(selectedExercise);
     hasShownNewRecord = false;
+    hasPlayedDootDoot = false;
 
     if (selectedExercise === 'pushup') {
       exerciseDetector = new PushupDetector(audioManager, personalityManager, personalBestManager);
@@ -93,6 +95,19 @@ function updateUI(result) {
   const repCount = result.repCount;
   document.querySelector('.rep-number').textContent = repCount;
   document.getElementById('feedback').textContent = result.feedback;
+
+  if (repCount === 7 && !hasPlayedDootDoot) {
+    hasPlayedDootDoot = true;
+    if (audioManager) {
+      audioManager.playSpecialAudio('Doot Doot 67 Sound Effect  Meme.mp3');
+    }
+  }
+
+  if (repCount === 8 && hasPlayedDootDoot) {
+    if (audioManager) {
+      audioManager.stopSpecialAudio();
+    }
+  }
 
   if (selectedExercise === 'pushup') {
     document.getElementById('elbow-angle').textContent = `${result.angles.elbow}°`;
