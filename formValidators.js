@@ -71,27 +71,6 @@ class PushupFormValidator extends FormValidator {
       this.clearIssue('asymmetry');
     }
 
-    const leftShoulder = getKeypoint(keypoints, 'left_shoulder');
-    const rightShoulder = getKeypoint(keypoints, 'right_shoulder');
-    const leftWrist = getKeypoint(keypoints, 'left_wrist');
-    const rightWrist = getKeypoint(keypoints, 'right_wrist');
-
-    if (leftShoulder && leftWrist && rightShoulder && rightWrist) {
-      const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
-      const handWidth = calculateDistance(leftWrist, rightWrist);
-
-      if (handWidth > shoulderWidth * 1.5) {
-        if (this.trackIssue('hands_wide')) {
-          issues.push({
-            message: 'Hands are too wide, bring them closer',
-            severity: 'WARNING',
-            priority: FeedbackPriority.FORM_WARNING
-          });
-        }
-      } else {
-        this.clearIssue('hands_wide');
-      }
-    }
 
     return issues;
   }
