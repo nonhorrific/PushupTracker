@@ -1,6 +1,8 @@
 
-fastapi
-uvicorn
-mediapipe
+streamlit
 opencv-python-headless
+mediapipe
 numpy
+pyttsx3
+streamlit-webrtc
+av
