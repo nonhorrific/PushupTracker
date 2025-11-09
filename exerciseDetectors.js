@@ -1,22 +1,22 @@
-class PushupDetector {
+class JumpingJacksDetector {
   constructor(audioManager, personalityManager, personalBestManager) {
-    this.stateMachine = new RepStateMachine('pushup');
-    this.formValidator = new PushupFormValidator();
+    this.stateMachine = new RepStateMachine('jumpingjacks');
+    this.formValidator = new JumpingJacksFormValidator();
     this.feedbackManager = new FeedbackManager(audioManager, personalityManager);
     this.personalityManager = personalityManager;
     this.personalBestManager = personalBestManager;
-    this.elbowBuffer = new AngleBuffer(5);
-    this.bodyBuffer = new AngleBuffer(5);
-    this.hipKneeBuffer = new AngleBuffer(5);
+    this.armBuffer = new AngleBuffer(5);
+    this.legBuffer = new AngleBuffer(5);
+    this.wristDistanceBuffer = new AngleBuffer(5);
+    this.ankleDistanceBuffer = new AngleBuffer(5);
   }
 
   detect(keypoints) {
     const requiredKeypoints = [
       'left_shoulder', 'right_shoulder',
-      'left_elbow', 'right_elbow',
       'left_wrist', 'right_wrist',
       'left_hip', 'right_hip',
-      'left_knee', 'right_knee'
+      'left_ankle', 'right_ankle'
     ];
 
     const avgConfidence = this.calculateConfidence(keypoints, requiredKeypoints);
@@ -25,41 +25,48 @@ class PushupDetector {
     if (missing.length > 0) {
       return {
         repCount: this.stateMachine.repCount,
-        angles: { elbow: 0, body: 0, hipKnee: 0 },
+        angles: { arms: 0, legs: 0 },
         feedback: 'Position yourself so your full body is visible',
         state: this.stateMachine.state,
         confidence: avgConfidence
       };
     }
 
-    const elbowData = getBilateralAverage(
-      keypoints,
-      'left_shoulder', 'right_shoulder',
-      'left_elbow', 'right_elbow',
-      'left_wrist', 'right_wrist'
-    );
-
     const leftShoulder = getKeypoint(keypoints, 'left_shoulder');
+    const rightShoulder = getKeypoint(keypoints, 'right_shoulder');
+    const leftWrist = getKeypoint(keypoints, 'left_wrist');
+    const rightWrist = getKeypoint(keypoints, 'right_wrist');
     const leftHip = getKeypoint(keypoints, 'left_hip');
-    const leftKnee = getKeypoint(keypoints, 'left_knee');
-    const bodyAngle = calculateAngle(leftShoulder, leftHip, leftKnee);
+    const rightHip = getKeypoint(keypoints, 'right_hip');
+    const leftAnkle = getKeypoint(keypoints, 'left_ankle');
+    const rightAnkle = getKeypoint(keypoints, 'right_ankle');
 
-    const hipKneeAngle = calculateAngle(leftHip, leftKnee, getKeypoint(keypoints, 'left_ankle'));
+    const leftArmAngle = calculateAngle(leftHip, leftShoulder, leftWrist);
+    const rightArmAngle = calculateAngle(rightHip, rightShoulder, rightWrist);
+    const armAngle = (leftArmAngle + rightArmAngle) / 2;
 
-    this.elbowBuffer.add(elbowData.avg);
-    this.bodyBuffer.add(bodyAngle);
-    this.hipKneeBuffer.add(hipKneeAngle);
+    const wristDistance = calculateDistance(leftWrist, rightWrist);
+    const ankleDistance = calculateDistance(leftAnkle, rightAnkle);
+    const shoulderDistance = calculateDistance(leftShoulder, rightShoulder);
 
-    const smoothElbow = this.elbowBuffer.getAverage();
-    const smoothBody = this.bodyBuffer.getAverage();
-    const smoothHipKnee = this.hipKneeBuffer.getAverage();
+    const normalizedAnkleSpread = ankleDistance / shoulderDistance;
+
+    this.armBuffer.add(armAngle);
+    this.wristDistanceBuffer.add(wristDistance);
+    this.ankleDistanceBuffer.add(normalizedAnkleSpread);
+
+    const smoothArmAngle = this.armBuffer.getAverage();
+    const smoothWristDistance = this.wristDistanceBuffer.getAverage();
+    const smoothAnkleSpread = this.ankleDistanceBuffer.getAverage();
 
     const formIssues = this.formValidator.validate(
       keypoints,
-      smoothElbow,
-      smoothBody,
-      smoothHipKnee,
-      elbowData.asymmetry
+      smoothArmAngle,
+      smoothAnkleSpread,
+      leftWrist,
+      rightWrist,
+      leftShoulder,
+      rightShoulder
     );
 
     for (const issue of formIssues) {
@@ -71,48 +78,48 @@ class PushupDetector {
     const state = this.stateMachine.state;
 
     if (state === ExerciseState.READY || state === ExerciseState.TOP) {
-      if (smoothElbow > 140 && this.stateMachine.canStartNewRep()) {
+      if (smoothArmAngle < 45 && smoothAnkleSpread < 1.5 && this.stateMachine.canStartNewRep()) {
         this.stateMachine.changeState(ExerciseState.TOP);
         if (formIssues.length === 0) {
           const readyMessage = this.personalityManager.getRandomMessage('ready');
-          feedback = readyMessage || 'Ready - Go down slowly';
+          feedback = readyMessage || 'Ready - Jump!';
         }
       }
     }
 
     if (state === ExerciseState.TOP || state === ExerciseState.READY) {
-      if (smoothElbow < 120) {
+      if (smoothArmAngle > 60 || smoothAnkleSpread > 1.8) {
         this.stateMachine.changeState(ExerciseState.DESCENDING);
         const descendMessage = this.personalityManager.getRandomMessage('descending');
-        feedback = descendMessage || 'Descending - Keep control';
+        feedback = descendMessage || 'Jump higher!';
       }
     }
 
     if (state === ExerciseState.DESCENDING) {
-      if (smoothElbow < 90) {
+      if (smoothArmAngle > 100 && smoothAnkleSpread > 2.0) {
         this.stateMachine.changeState(ExerciseState.BOTTOM);
         const bottomMessage = this.personalityManager.getRandomMessage('bottom');
-        feedback = bottomMessage || 'Good depth - Push up';
-        this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, bottomMessage || 'Push up');
+        feedback = bottomMessage || 'Good spread - Bring it back!';
+        this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, bottomMessage || 'Bring it back!');
       }
     }
 
     if (state === ExerciseState.BOTTOM) {
-      if (smoothElbow > 100) {
+      if (smoothArmAngle < 80 || smoothAnkleSpread < 1.8) {
         this.stateMachine.changeState(ExerciseState.ASCENDING);
         const ascendMessage = this.personalityManager.getRandomMessage('ascending');
-        feedback = ascendMessage || 'Ascending - Keep pushing';
+        feedback = ascendMessage || 'Coming down';
       }
     }
 
     if (state === ExerciseState.ASCENDING) {
-      if (smoothElbow > 140) {
+      if (smoothArmAngle < 45 && smoothAnkleSpread < 1.5) {
         const repData = this.stateMachine.completeRep();
         if (repData) {
           const repMessage = this.personalityManager.getRandomMessage('repComplete');
           feedback = repMessage || `Excellent! Rep ${repData.count}`;
 
-          const currentBest = this.personalBestManager.getBestScore('pushup');
+          const currentBest = this.personalBestManager.getBestScore('jumpingjacks');
           if (repData.count > currentBest) {
             const recordMessage = this.personalityManager.getRandomMessage('newRecord');
             this.feedbackManager.speak(FeedbackPriority.REP_COUNT, recordMessage || 'New record!');
@@ -136,9 +143,8 @@ class PushupDetector {
     return {
       repCount: this.stateMachine.repCount,
       angles: {
-        elbow: Math.round(smoothElbow),
-        body: Math.round(smoothBody),
-        hipKnee: Math.round(smoothHipKnee)
+        arms: Math.round(smoothArmAngle),
+        legs: Math.round(smoothAnkleSpread * 100)
       },
       feedback,
       state: this.stateMachine.state,
@@ -164,9 +170,10 @@ class PushupDetector {
     this.stateMachine.reset();
     this.formValidator.reset();
     this.feedbackManager.reset();
-    this.elbowBuffer.clear();
-    this.bodyBuffer.clear();
-    this.hipKneeBuffer.clear();
+    this.armBuffer.clear();
+    this.legBuffer.clear();
+    this.wristDistanceBuffer.clear();
+    this.ankleDistanceBuffer.clear();
   }
 }
 

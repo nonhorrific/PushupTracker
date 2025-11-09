@@ -52,8 +52,8 @@ async function initializeTracker() {
     hasShownNewRecord = false;
     hasPlayedDootDoot = false;
 
-    if (selectedExercise === 'pushup') {
-      exerciseDetector = new PushupDetector(audioManager, personalityManager, personalBestManager);
+    if (selectedExercise === 'jumpingjacks') {
+      exerciseDetector = new JumpingJacksDetector(audioManager, personalityManager, personalBestManager);
     } else if (selectedExercise === 'squat') {
       exerciseDetector = new SquatDetector(audioManager, personalityManager, personalBestManager);
     }
@@ -75,17 +75,26 @@ async function initializeTracker() {
 }
 
 async function detect() {
-  const poses = await detector.estimatePoses(video);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  try {
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+      requestAnimationFrame(detect);
+      return;
+    }
 
-  if (poses.length > 0) {
-    const kp = poses[0].keypoints;
-    const result = exerciseDetector.detect(kp);
+    const poses = await detector.estimatePoses(video);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    updateUI(result);
-    drawKeypoints(kp);
-    drawSkeleton(kp);
+    if (poses.length > 0) {
+      const kp = poses[0].keypoints;
+      const result = exerciseDetector.detect(kp);
+
+      updateUI(result);
+      drawKeypoints(kp);
+      drawSkeleton(kp);
+    }
+  } catch (error) {
+    console.error('Detection error:', error);
   }
 
   requestAnimationFrame(detect);
@@ -109,9 +118,9 @@ function updateUI(result) {
     }
   }
 
-  if (selectedExercise === 'pushup') {
-    document.getElementById('elbow-angle').textContent = `${result.angles.elbow}°`;
-    document.getElementById('body-angle').textContent = `${result.angles.body}°`;
+  if (selectedExercise === 'jumpingjacks') {
+    document.getElementById('elbow-angle').textContent = `${result.angles.arms}°`;
+    document.getElementById('body-angle').textContent = `${result.angles.legs}`;
   } else if (selectedExercise === 'squat') {
     document.getElementById('elbow-angle').textContent = `${result.angles.knee}°`;
     document.getElementById('body-angle').textContent = `${result.angles.back}°`;
@@ -191,7 +200,7 @@ function showNewRecordAnimation() {
 
 function drawKeypoints(keypoints) {
   keypoints.forEach(kp => {
-    if (kp.score > 0.6) {
+    if (kp.score > 0.3) {
       ctx.beginPath();
       ctx.arc(kp.x, kp.y, 6, 0, 2 * Math.PI);
       ctx.fillStyle = "#00d4ff";
@@ -226,7 +235,7 @@ function drawSkeleton(keypoints) {
     const kpStart = keypoints.find(kp => kp.name === start);
     const kpEnd = keypoints.find(kp => kp.name === end);
 
-    if (kpStart && kpEnd && kpStart.score > 0.6 && kpEnd.score > 0.6) {
+    if (kpStart && kpEnd && kpStart.score > 0.3 && kpEnd.score > 0.3) {
       ctx.beginPath();
       ctx.moveTo(kpStart.x, kpStart.y);
       ctx.lineTo(kpEnd.x, kpEnd.y);
@@ -258,13 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
   exerciseCards.forEach(card => {
     card.addEventListener('click', () => {
       selectedExercise = card.dataset.exercise;
-      const exerciseTitle = selectedExercise === 'pushup' ? 'Push-Up Tracker' : 'Squat Tracker';
+      const exerciseTitle = selectedExercise === 'jumpingjacks' ? 'Jumping Jacks Tracker' : 'Squat Tracker';
       document.getElementById('exercise-title').textContent = exerciseTitle;
 
       const metricLabels = document.querySelectorAll('.metric-label');
-      if (selectedExercise === 'pushup') {
-        metricLabels[0].textContent = 'Elbow';
-        metricLabels[1].textContent = 'Body';
+      if (selectedExercise === 'jumpingjacks') {
+        metricLabels[0].textContent = 'Arms';
+        metricLabels[1].textContent = 'Legs';
       } else {
         metricLabels[0].textContent = 'Knee';
         metricLabels[1].textContent = 'Back';
@@ -313,9 +322,9 @@ function updatePersonalitySelection() {
 }
 
 function updateBestScoreDisplays() {
-  const pushupBest = personalBestManager.getBestScore('pushup');
+  const jumpingJacksBest = personalBestManager.getBestScore('jumpingjacks');
   const squatBest = personalBestManager.getBestScore('squat');
 
-  document.querySelector('.best-score[data-exercise="pushup"]').textContent = pushupBest;
+  document.querySelector('.best-score[data-exercise="jumpingjacks"]').textContent = jumpingJacksBest;
   document.querySelector('.best-score[data-exercise="squat"]').textContent = squatBest;
 }

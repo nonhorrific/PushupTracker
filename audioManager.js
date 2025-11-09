@@ -12,6 +12,10 @@ class AudioManager {
     this.currentAudio = null;
     this.specialAudio = null;
     this.isPlayingSpecial = false;
+    this.audioQueue = [];
+    this.isProcessingQueue = false;
+    this.lastPlayTime = 0;
+    this.playDebounceDelay = 200;
   }
 
   async generateSpeech(text, personality) {
@@ -65,15 +69,38 @@ class AudioManager {
       return false;
     }
 
+    const now = Date.now();
+    if (now - this.lastPlayTime < this.playDebounceDelay) {
+      return false;
+    }
+    this.lastPlayTime = now;
+
     try {
       if (this.currentAudio) {
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
+        try {
+          this.currentAudio.pause();
+          this.currentAudio.currentTime = 0;
+        } catch (e) {
+        }
       }
 
       this.currentAudio = new Audio(audioUrl);
-      await this.currentAudio.play();
-      return true;
+
+      return new Promise((resolve) => {
+        const playPromise = this.currentAudio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => resolve(true))
+            .catch((error) => {
+              if (error.name !== 'AbortError') {
+                console.error('Error playing audio:', error);
+              }
+              resolve(false);
+            });
+        } else {
+          resolve(true);
+        }
+      });
     } catch (error) {
       console.error('Error playing audio:', error);
       return false;
@@ -99,8 +126,11 @@ class AudioManager {
   async playSpecialAudio(audioFilePath) {
     try {
       if (this.currentAudio) {
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
+        try {
+          this.currentAudio.pause();
+          this.currentAudio.currentTime = 0;
+        } catch (e) {
+        }
       }
 
       speechSynthesis.cancel();
@@ -113,7 +143,21 @@ class AudioManager {
         this.specialAudio = null;
       };
 
-      await this.specialAudio.play();
+      this.specialAudio.onerror = () => {
+        this.isPlayingSpecial = false;
+        this.specialAudio = null;
+      };
+
+      const playPromise = this.specialAudio.play();
+      if (playPromise !== undefined) {
+        await playPromise.catch((error) => {
+          if (error.name !== 'AbortError') {
+            console.error('Error playing special audio:', error);
+          }
+          this.isPlayingSpecial = false;
+          this.specialAudio = null;
+        });
+      }
       return true;
     } catch (error) {
       console.error('Error playing special audio:', error);
@@ -125,8 +169,11 @@ class AudioManager {
 
   stopSpecialAudio() {
     if (this.specialAudio) {
-      this.specialAudio.pause();
-      this.specialAudio.currentTime = 0;
+      try {
+        this.specialAudio.pause();
+        this.specialAudio.currentTime = 0;
+      } catch (e) {
+      }
       this.specialAudio = null;
     }
     this.isPlayingSpecial = false;
@@ -147,8 +194,11 @@ class AudioManager {
 
   stop() {
     if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio.currentTime = 0;
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      } catch (e) {
+      }
     }
     this.stopSpecialAudio();
     speechSynthesis.cancel();

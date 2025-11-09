@@ -31,46 +31,38 @@ class FormValidator {
   }
 }
 
-class PushupFormValidator extends FormValidator {
-  validate(keypoints, elbowAngle, bodyAngle, hipKneeAngle, asymmetry) {
+class JumpingJacksFormValidator extends FormValidator {
+  validate(keypoints, armAngle, ankleSpread, leftWrist, rightWrist, leftShoulder, rightShoulder) {
     const issues = [];
 
-    if (bodyAngle < 140) {
-      if (this.trackIssue('back_sag')) {
-        issues.push({
-          message: 'Keep your back straight and core tight',
-          severity: 'CRITICAL',
-          priority: FeedbackPriority.CRITICAL_FORM
-        });
+    if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
+      const avgWristHeight = (leftWrist.y + rightWrist.y) / 2;
+      const avgShoulderHeight = (leftShoulder.y + rightShoulder.y) / 2;
+
+      if (armAngle > 90 && avgWristHeight > avgShoulderHeight - 50) {
+        if (this.trackIssue('arms_not_up')) {
+          issues.push({
+            message: 'Raise your arms higher above your head',
+            severity: 'WARNING',
+            priority: FeedbackPriority.FORM_WARNING
+          });
+        }
+      } else {
+        this.clearIssue('arms_not_up');
       }
-    } else {
-      this.clearIssue('back_sag');
     }
 
-    if (hipKneeAngle < 150) {
-      if (this.trackIssue('hips_low')) {
+    if (ankleSpread < 1.8 && armAngle > 80) {
+      if (this.trackIssue('legs_not_spread')) {
         issues.push({
-          message: 'Keep your hips up in line with your body',
+          message: 'Spread your legs wider',
           severity: 'WARNING',
           priority: FeedbackPriority.FORM_WARNING
         });
       }
     } else {
-      this.clearIssue('hips_low');
+      this.clearIssue('legs_not_spread');
     }
-
-    if (asymmetry > 20) {
-      if (this.trackIssue('asymmetry')) {
-        issues.push({
-          message: 'Keep both arms at the same level',
-          severity: 'WARNING',
-          priority: FeedbackPriority.FORM_WARNING
-        });
-      }
-    } else {
-      this.clearIssue('asymmetry');
-    }
-
 
     return issues;
   }

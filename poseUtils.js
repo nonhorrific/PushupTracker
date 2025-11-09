@@ -1,4 +1,4 @@
-const MIN_CONFIDENCE = 0.6;
+const MIN_CONFIDENCE = 0.3;
 
 class AngleBuffer {
   constructor(size = 5) {
@@ -62,6 +62,12 @@ function getBilateralAverage(keypoints, leftName, rightName, leftJoint, rightJoi
   const asymmetry = Math.abs(leftAngle - rightAngle);
 
   return { avg, left: leftAngle, right: rightAngle, asymmetry };
+}
+
+function getKeypointFallback(keypoints, name) {
+  const kp = keypoints.find(k => k.name === name);
+  if (!kp) return null;
+  return kp;
 }
 
 function checkKeypointsVisibility(keypoints, requiredKeypoints) {
