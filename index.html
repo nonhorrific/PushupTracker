@@ -3,8 +3,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Push-Up Tracker (Web Voice)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Tracker - AI Fitness Coach</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
@@ -12,10 +16,98 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
 </head>
 <body>
-  <h1>💪 Push-Up Tracker</h1>
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas"></canvas>
-  <div id="feedback">Initializing...</div>
+  <div id="selection-screen" class="screen active">
+    <div class="container">
+      <div class="header-section">
+        <h1 class="main-title">AI Form Tracker</h1>
+        <p class="subtitle">Real-time pose detection with voice feedback</p>
+      </div>
+
+      <div class="exercise-grid">
+        <button class="exercise-card" data-exercise="pushup">
+          <div class="exercise-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12h4l3 9 4-18 3 9h4"/>
+            </svg>
+          </div>
+          <h2>Push-Ups</h2>
+          <p>Track your form and count reps</p>
+          <div class="card-accent"></div>
+        </button>
+
+        <button class="exercise-card" data-exercise="squat">
+          <div class="exercise-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v20M17 7l-5-5-5 5M7 17l5 5 5-5"/>
+            </svg>
+          </div>
+          <h2>Squats</h2>
+          <p>Perfect your squat technique</p>
+          <div class="card-accent"></div>
+        </button>
+      </div>
+
+      <div class="features">
+        <div class="feature-item">
+          <div class="feature-icon">🎯</div>
+          <span>Real-time Analysis</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔒</div>
+          <span>Privacy First</span>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🗣️</div>
+          <span>Voice Feedback</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tracker-screen" class="screen">
+    <div class="tracker-container">
+      <div class="tracker-header">
+        <button id="back-btn" class="back-button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back
+        </button>
+        <h1 id="exercise-title" class="exercise-title">Push-Up Tracker</h1>
+        <div class="spacer"></div>
+      </div>
+
+      <div class="video-container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <div class="video-overlay">
+          <div id="rep-counter" class="rep-counter">
+            <div class="rep-number">0</div>
+            <div class="rep-label">REPS</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feedback-panel">
+        <div id="status-indicator" class="status-indicator">
+          <div class="status-dot"></div>
+          <span id="status-text">Initializing...</span>
+        </div>
+        <div id="feedback" class="feedback-text">Setting up camera...</div>
+        <div id="metrics" class="metrics">
+          <div class="metric-item">
+            <span class="metric-label">Elbow Angle</span>
+            <span id="elbow-angle" class="metric-value">--°</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Body Angle</span>
+            <span id="body-angle" class="metric-value">--°</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
-
 let detector, video, canvas, ctx;
 let counter = 0, stage = null, lastSpeak = 0;
-const cooldown = 1500; // ms between voice prompts
+const cooldown = 1500;
+let selectedExercise = null;
 
 function speak(text) {
   const now = Date.now();
@@ -25,6 +25,20 @@ function angle(a, b, c) {
   return deg;
 }
 
+function updateUI(repCount, elbowAngle, bodyAngle, feedbackText) {
+  document.querySelector('.rep-number').textContent = repCount;
+  document.getElementById('elbow-angle').textContent = `${elbowAngle.toFixed(0)}°`;
+  document.getElementById('body-angle').textContent = `${bodyAngle.toFixed(0)}°`;
+  document.getElementById('feedback').textContent = feedbackText;
+}
+
+function switchScreen(from, to) {
+  document.getElementById(from).classList.remove('active');
+  setTimeout(() => {
+    document.getElementById(to).classList.add('active');
+  }, 300);
+}
+
 async function setupCamera() {
   video = document.getElementById('video');
   const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -33,65 +47,178 @@ async function setupCamera() {
   return video;
 }
 
-async function run() {
+async function initializeTracker() {
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
-  video = await setupCamera();
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
 
-  detector = await poseDetection.createDetector(
-    poseDetection.SupportedModels.MoveNet,
-    { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
-  );
+  document.getElementById('status-text').textContent = 'Setting up camera...';
+  document.getElementById('feedback').textContent = 'Please allow camera access';
 
-  speak("Starting push-up tracker. Please get into position.");
+  try {
+    video = await setupCamera();
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-  async function detect() {
-    const poses = await detector.estimatePoses(video);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    document.getElementById('status-text').textContent = 'Loading AI model...';
+    document.getElementById('feedback').textContent = 'Please wait while we load the pose detection model';
 
-    if (poses.length > 0) {
-      const kp = poses[0].keypoints;
-      const leftShoulder = kp.find(k => k.name === "left_shoulder");
-      const leftElbow = kp.find(k => k.name === "left_elbow");
-      const leftWrist = kp.find(k => k.name === "left_wrist");
-      const leftHip = kp.find(k => k.name === "left_hip");
-      const leftKnee = kp.find(k => k.name === "left_knee");
+    detector = await poseDetection.createDetector(
+      poseDetection.SupportedModels.MoveNet,
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+    );
 
-      const elbowAngle = angle(leftShoulder, leftElbow, leftWrist);
-      const bodyAngle = angle(leftShoulder, leftHip, leftKnee);
+    document.getElementById('status-text').textContent = 'Ready';
+    document.getElementById('feedback').textContent = 'Get into position and start your exercise';
 
-      // Rep logic
-      if (bodyAngle < 155) speak("Keep your back straight");
-      if (elbowAngle > 160) {
-        stage = "up";
-        speak("Go down");
-      }
-      if (elbowAngle < 90 && stage === "up") {
-        stage = "down";
-        counter++;
-        speak(`Good rep. Push up. Total ${counter}`);
-      }
+    const exerciseName = selectedExercise === 'pushup' ? 'push-ups' : 'squats';
+    speak(`Starting ${exerciseName} tracker. Please get into position.`);
 
-      document.getElementById('feedback').textContent =
-        `Reps: ${counter} | Elbow: ${elbowAngle.toFixed(0)} | Body: ${bodyAngle.toFixed(0)}`;
-
-      kp.forEach(k => {
-        if (k.score > 0.4) {
-          ctx.beginPath();
-          ctx.arc(k.x, k.y, 5, 0, 2 * Math.PI);
-          ctx.fillStyle = "cyan";
-          ctx.fill();
-        }
-      });
-    }
-
-    requestAnimationFrame(detect);
+    detect();
+  } catch (error) {
+    console.error('Error initializing tracker:', error);
+    document.getElementById('status-text').textContent = 'Error';
+    document.getElementById('feedback').textContent = 'Failed to initialize camera or model';
   }
-
-  detect();
 }
 
-run();
+async function detect() {
+  const poses = await detector.estimatePoses(video);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  if (poses.length > 0) {
+    const kp = poses[0].keypoints;
+
+    if (selectedExercise === 'pushup') {
+      detectPushup(kp);
+    } else if (selectedExercise === 'squat') {
+      detectSquat(kp);
+    }
+
+    kp.forEach(k => {
+      if (k.score > 0.4) {
+        ctx.beginPath();
+        ctx.arc(k.x, k.y, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = "#00d4ff";
+        ctx.fill();
+      }
+    });
+  }
+
+  requestAnimationFrame(detect);
+}
+
+function detectPushup(kp) {
+  const leftShoulder = kp.find(k => k.name === "left_shoulder");
+  const leftElbow = kp.find(k => k.name === "left_elbow");
+  const leftWrist = kp.find(k => k.name === "left_wrist");
+  const leftHip = kp.find(k => k.name === "left_hip");
+  const leftKnee = kp.find(k => k.name === "left_knee");
+
+  if (!leftShoulder || !leftElbow || !leftWrist || !leftHip || !leftKnee) {
+    updateUI(counter, 0, 0, 'Position yourself so your full body is visible');
+    return;
+  }
+
+  const elbowAngle = angle(leftShoulder, leftElbow, leftWrist);
+  const bodyAngle = angle(leftShoulder, leftHip, leftKnee);
+
+  let feedbackText = 'Good form';
+
+  if (bodyAngle < 155) {
+    feedbackText = 'Keep your back straight';
+    speak("Keep your back straight");
+  }
+
+  if (elbowAngle > 160) {
+    stage = "up";
+    if (bodyAngle >= 155) {
+      feedbackText = 'Go down slowly';
+      speak("Go down");
+    }
+  }
+
+  if (elbowAngle < 90 && stage === "up") {
+    stage = "down";
+    counter++;
+    feedbackText = `Great rep! Total: ${counter}`;
+    speak(`Good rep. Push up. Total ${counter}`);
+  }
+
+  updateUI(counter, elbowAngle, bodyAngle, feedbackText);
+}
+
+function detectSquat(kp) {
+  const leftHip = kp.find(k => k.name === "left_hip");
+  const leftKnee = kp.find(k => k.name === "left_knee");
+  const leftAnkle = kp.find(k => k.name === "left_ankle");
+  const leftShoulder = kp.find(k => k.name === "left_shoulder");
+
+  if (!leftHip || !leftKnee || !leftAnkle || !leftShoulder) {
+    updateUI(counter, 0, 0, 'Position yourself so your full body is visible');
+    return;
+  }
+
+  const kneeAngle = angle(leftHip, leftKnee, leftAnkle);
+  const backAngle = angle(leftShoulder, leftHip, leftKnee);
+
+  let feedbackText = 'Good form';
+
+  if (backAngle < 140) {
+    feedbackText = 'Keep your back straighter';
+    speak("Keep your back straight");
+  }
+
+  if (kneeAngle > 160) {
+    stage = "up";
+    if (backAngle >= 140) {
+      feedbackText = 'Go down into squat';
+      speak("Go down");
+    }
+  }
+
+  if (kneeAngle < 100 && stage === "up") {
+    stage = "down";
+    counter++;
+    feedbackText = `Perfect squat! Total: ${counter}`;
+    speak(`Good rep. Stand up. Total ${counter}`);
+  }
+
+  updateUI(counter, kneeAngle, backAngle, feedbackText);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const exerciseCards = document.querySelectorAll('.exercise-card');
+  const backBtn = document.getElementById('back-btn');
+
+  exerciseCards.forEach(card => {
+    card.addEventListener('click', () => {
+      selectedExercise = card.dataset.exercise;
+      const exerciseTitle = selectedExercise === 'pushup' ? 'Push-Up Tracker' : 'Squat Tracker';
+      document.getElementById('exercise-title').textContent = exerciseTitle;
+
+      counter = 0;
+      stage = null;
+
+      switchScreen('selection-screen', 'tracker-screen');
+
+      setTimeout(() => {
+        initializeTracker();
+      }, 400);
+    });
+  });
+
+  backBtn.addEventListener('click', () => {
+    if (video && video.srcObject) {
+      video.srcObject.getTracks().forEach(track => track.stop());
+    }
+
+    speechSynthesis.cancel();
+
+    switchScreen('tracker-screen', 'selection-screen');
+
+    counter = 0;
+    stage = null;
+    selectedExercise = null;
+  });
+});
