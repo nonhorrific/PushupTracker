@@ -93,6 +93,8 @@ function updateUI(result) {
     document.getElementById('body-angle').textContent = `${result.angles.back}°`;
   }
 
+  document.getElementById('confidence-value').textContent = `${result.confidence}%`;
+
   const statusDot = document.querySelector('.status-dot');
   const statusText = document.getElementById('status-text');
 
@@ -180,12 +182,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const exerciseTitle = selectedExercise === 'pushup' ? 'Push-Up Tracker' : 'Squat Tracker';
       document.getElementById('exercise-title').textContent = exerciseTitle;
 
+      const metricLabels = document.querySelectorAll('.metric-label');
       if (selectedExercise === 'pushup') {
-        document.querySelector('.metric-label').textContent = 'Elbow Angle';
-        document.querySelectorAll('.metric-label')[1].textContent = 'Body Angle';
+        metricLabels[0].textContent = 'Elbow';
+        metricLabels[1].textContent = 'Body';
       } else {
-        document.querySelector('.metric-label').textContent = 'Knee Angle';
-        document.querySelectorAll('.metric-label')[1].textContent = 'Back Angle';
+        metricLabels[0].textContent = 'Knee';
+        metricLabels[1].textContent = 'Back';
       }
 
       switchScreen('selection-screen', 'tracker-screen');

@@ -17,13 +17,16 @@ class PushupDetector {
       'left_knee', 'right_knee'
     ];
 
+    const avgConfidence = this.calculateConfidence(keypoints, requiredKeypoints);
+
     const missing = checkKeypointsVisibility(keypoints, requiredKeypoints);
     if (missing.length > 0) {
       return {
         repCount: this.stateMachine.repCount,
         angles: { elbow: 0, body: 0, hipKnee: 0 },
         feedback: 'Position yourself so your full body is visible',
-        state: this.stateMachine.state
+        state: this.stateMachine.state,
+        confidence: avgConfidence
       };
     }
 
@@ -66,7 +69,7 @@ class PushupDetector {
     const state = this.stateMachine.state;
 
     if (state === ExerciseState.READY || state === ExerciseState.TOP) {
-      if (smoothElbow > 160 && smoothBody >= 150 && this.stateMachine.canTransition()) {
+      if (smoothElbow > 150 && smoothBody >= 140 && this.stateMachine.canTransition()) {
         this.stateMachine.changeState(ExerciseState.TOP);
         if (formIssues.length === 0) {
           feedback = 'Ready - Go down slowly';
@@ -75,14 +78,14 @@ class PushupDetector {
     }
 
     if (state === ExerciseState.TOP || state === ExerciseState.READY) {
-      if (smoothElbow < 150 && this.stateMachine.canTransition()) {
+      if (smoothElbow < 140 && this.stateMachine.canTransition()) {
         this.stateMachine.changeState(ExerciseState.DESCENDING);
         feedback = 'Descending - Keep control';
       }
     }
 
     if (state === ExerciseState.DESCENDING) {
-      if (smoothElbow < 90 && this.stateMachine.canTransition()) {
+      if (smoothElbow < 100 && this.stateMachine.canTransition()) {
         this.stateMachine.changeState(ExerciseState.BOTTOM);
         feedback = 'Good depth - Push up';
         this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, 'Push up');
@@ -90,14 +93,14 @@ class PushupDetector {
     }
 
     if (state === ExerciseState.BOTTOM) {
-      if (smoothElbow > 100 && this.stateMachine.canTransition()) {
+      if (smoothElbow > 110 && this.stateMachine.canTransition()) {
         this.stateMachine.changeState(ExerciseState.ASCENDING);
         feedback = 'Ascending - Keep pushing';
       }
     }
 
     if (state === ExerciseState.ASCENDING) {
-      if (smoothElbow > 160 && this.stateMachine.canTransition()) {
+      if (smoothElbow > 150 && this.stateMachine.canTransition()) {
         const repData = this.stateMachine.completeRep();
         if (repData) {
           feedback = `Excellent! Rep ${repData.count} - Quality: ${repData.quality}%`;
@@ -122,8 +125,22 @@ class PushupDetector {
       },
       feedback,
       state: this.stateMachine.state,
-      quality: this.stateMachine.repQuality
+      quality: this.stateMachine.repQuality,
+      confidence: avgConfidence
     };
+  }
+
+  calculateConfidence(keypoints, requiredKeypoints) {
+    let totalScore = 0;
+    let count = 0;
+    for (const name of requiredKeypoints) {
+      const kp = keypoints.find(k => k.name === name);
+      if (kp && kp.score) {
+        totalScore += kp.score;
+        count++;
+      }
+    }
+    return count > 0 ? Math.round((totalScore / count) * 100) : 0;
   }
 
   reset() {
@@ -154,13 +171,16 @@ class SquatDetector {
       'left_ankle', 'right_ankle'
     ];
 
+    const avgConfidence = this.calculateConfidence(keypoints, requiredKeypoints);
+
     const missing = checkKeypointsVisibility(keypoints, requiredKeypoints);
     if (missing.length > 0) {
       return {
         repCount: this.stateMachine.repCount,
         angles: { knee: 0, back: 0, hip: 0 },
         feedback: 'Position yourself so your full body is visible',
-        state: this.stateMachine.state
+        state: this.stateMachine.state,
+        confidence: avgConfidence
       };
     }
 
@@ -204,7 +224,7 @@ class SquatDetector {
     const state = this.stateMachine.state;
 
     if (state === ExerciseState.READY || state === ExerciseState.TOP) {
-      if (smoothKnee > 160 && smoothBack >= 130 && this.stateMachine.canTransition()) {
+      if (smoothKnee > 150 && smoothBack >= 120 && this.stateMachine.canTransition()) {
         this.stateMachine.changeState(ExerciseState.TOP);
         if (formIssues.length === 0) {
           feedback = 'Ready - Squat down slowly';
@@ -213,14 +233,14 @@ class SquatDetector {
     }
 
     if (state === ExerciseState.TOP || state === ExerciseState.READY) {
-      if (smoothKnee < 150 && this.stateMachine.canTransition()) {
+      if (smoothKnee < 140 && this.stateMachine.canTransition()) {
         this.stateMachine.changeState(ExerciseState.DESCENDING);
         feedback = 'Descending - Control the movement';
       }
     }
 
     if (state === ExerciseState.DESCENDING) {
-      if (smoothKnee < 100 && this.stateMachine.canTransition()) {
+      if (smoothKnee < 110 && this.stateMachine.canTransition()) {
         this.stateMachine.changeState(ExerciseState.BOTTOM);
         feedback = 'Good depth - Stand up';
         this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, 'Stand up');
@@ -228,14 +248,14 @@ class SquatDetector {
     }
 
     if (state === ExerciseState.BOTTOM) {
-      if (smoothKnee > 110 && this.stateMachine.canTransition()) {
+      if (smoothKnee > 120 && this.stateMachine.canTransition()) {
         this.stateMachine.changeState(ExerciseState.ASCENDING);
         feedback = 'Ascending - Drive through heels';
       }
     }
 
     if (state === ExerciseState.ASCENDING) {
-      if (smoothKnee > 160 && this.stateMachine.canTransition()) {
+      if (smoothKnee > 150 && this.stateMachine.canTransition()) {
         const repData = this.stateMachine.completeRep();
         if (repData) {
           feedback = `Perfect! Rep ${repData.count} - Quality: ${repData.quality}%`;
@@ -260,8 +280,22 @@ class SquatDetector {
       },
       feedback,
       state: this.stateMachine.state,
-      quality: this.stateMachine.repQuality
+      quality: this.stateMachine.repQuality,
+      confidence: avgConfidence
     };
+  }
+
+  calculateConfidence(keypoints, requiredKeypoints) {
+    let totalScore = 0;
+    let count = 0;
+    for (const name of requiredKeypoints) {
+      const kp = keypoints.find(k => k.name === name);
+      if (kp && kp.score) {
+        totalScore += kp.score;
+        count++;
+      }
+    }
+    return count > 0 ? Math.round((totalScore / count) * 100) : 0;
   }
 
   reset() {

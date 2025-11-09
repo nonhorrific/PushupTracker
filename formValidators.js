@@ -35,7 +35,7 @@ class PushupFormValidator extends FormValidator {
   validate(keypoints, elbowAngle, bodyAngle, hipKneeAngle, asymmetry) {
     const issues = [];
 
-    if (bodyAngle < 150) {
+    if (bodyAngle < 140) {
       if (this.trackIssue('back_sag')) {
         issues.push({
           message: 'Keep your back straight and core tight',
@@ -47,7 +47,7 @@ class PushupFormValidator extends FormValidator {
       this.clearIssue('back_sag');
     }
 
-    if (hipKneeAngle < 160) {
+    if (hipKneeAngle < 150) {
       if (this.trackIssue('hips_low')) {
         issues.push({
           message: 'Keep your hips up in line with your body',
@@ -101,7 +101,7 @@ class SquatFormValidator extends FormValidator {
   validate(keypoints, kneeAngle, backAngle, hipAngle, asymmetry) {
     const issues = [];
 
-    if (backAngle < 130) {
+    if (backAngle < 120) {
       if (this.trackIssue('back_lean')) {
         issues.push({
           message: 'Keep your chest up and back straighter',
