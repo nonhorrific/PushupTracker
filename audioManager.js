@@ -5,7 +5,7 @@ class AudioManager {
     this.isGenerating = false;
     this.voiceIds = {
       military: 'pNInz6obpgDQGcFmaJgB',
-      popup_girl: '21m00Tcm4TlvDq8ikWAM',
+      popup_girl: 'EXAVITQu4vr4xnSDxMaL',
       gym_bro: 'onwK4e9ZLuTAKqWW03F9'
     };
     this.elevenLabsEnabled = true;

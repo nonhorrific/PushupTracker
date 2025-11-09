@@ -105,23 +105,29 @@ function updateUI(result) {
   document.getElementById('confidence-value').textContent = `${result.confidence}%`;
 
   const bestComparison = document.getElementById('best-comparison');
-  if (currentBestScore > 0) {
-    if (repCount > currentBestScore) {
-      bestComparison.textContent = `🔥 NEW RECORD! +${repCount - currentBestScore}`;
-      if (!hasShownNewRecord) {
-        showNewRecordAnimation();
-        hasShownNewRecord = true;
-        personalBestManager.updateBestScore(selectedExercise, repCount);
-        currentBestScore = repCount;
-      }
-    } else if (repCount === currentBestScore) {
+  if (repCount > currentBestScore) {
+    bestComparison.textContent = `🔥 NEW RECORD! +${repCount - currentBestScore}`;
+    if (!hasShownNewRecord) {
+      showNewRecordAnimation();
+      hasShownNewRecord = true;
+    }
+    personalBestManager.updateBestScore(selectedExercise, repCount);
+    currentBestScore = repCount;
+  } else if (currentBestScore > 0) {
+    if (repCount === currentBestScore) {
       bestComparison.textContent = `Tied with best!`;
     } else {
       const remaining = currentBestScore - repCount;
       bestComparison.textContent = `${remaining} away from best`;
     }
   } else {
-    bestComparison.textContent = '';
+    if (repCount > 0) {
+      personalBestManager.updateBestScore(selectedExercise, repCount);
+      currentBestScore = repCount;
+      bestComparison.textContent = `First record: ${repCount}`;
+    } else {
+      bestComparison.textContent = '';
+    }
   }
 
   const statusDot = document.querySelector('.status-dot');

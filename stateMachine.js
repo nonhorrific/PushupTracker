@@ -18,7 +18,8 @@ class RepStateMachine {
     this.formIssuesDuringRep = [];
     this.angleHistory = [];
     this.lastRepCompletionTime = 0;
-    this.repCooldown = 300;
+    this.repCooldown = 100;
+    this.hasReachedBottom = false;
   }
 
   getTimeInState() {
@@ -39,6 +40,11 @@ class RepStateMachine {
       this.repStartTime = Date.now();
       this.formIssuesDuringRep = [];
       this.repQuality = 100;
+      this.hasReachedBottom = false;
+    }
+
+    if (newState === ExerciseState.BOTTOM) {
+      this.hasReachedBottom = true;
     }
 
     return true;
@@ -55,6 +61,10 @@ class RepStateMachine {
   }
 
   completeRep() {
+    if (!this.hasReachedBottom) {
+      return null;
+    }
+
     if (this.state !== ExerciseState.ASCENDING && this.state !== ExerciseState.TOP) {
       return null;
     }
@@ -71,6 +81,7 @@ class RepStateMachine {
 
     this.changeState(ExerciseState.COMPLETED);
     this.changeState(ExerciseState.READY);
+    this.hasReachedBottom = false;
 
     return repData;
   }

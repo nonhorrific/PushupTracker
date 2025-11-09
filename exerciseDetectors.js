@@ -71,7 +71,7 @@ class PushupDetector {
     const state = this.stateMachine.state;
 
     if (state === ExerciseState.READY || state === ExerciseState.TOP) {
-      if (smoothElbow > 150 && smoothBody >= 140 && this.stateMachine.canStartNewRep()) {
+      if (smoothElbow > 140 && this.stateMachine.canStartNewRep()) {
         this.stateMachine.changeState(ExerciseState.TOP);
         if (formIssues.length === 0) {
           const readyMessage = this.personalityManager.getRandomMessage('ready');
@@ -81,7 +81,7 @@ class PushupDetector {
     }
 
     if (state === ExerciseState.TOP || state === ExerciseState.READY) {
-      if (smoothElbow < 140) {
+      if (smoothElbow < 120) {
         this.stateMachine.changeState(ExerciseState.DESCENDING);
         const descendMessage = this.personalityManager.getRandomMessage('descending');
         feedback = descendMessage || 'Descending - Keep control';
@@ -89,7 +89,7 @@ class PushupDetector {
     }
 
     if (state === ExerciseState.DESCENDING) {
-      if (smoothElbow < 100) {
+      if (smoothElbow < 90) {
         this.stateMachine.changeState(ExerciseState.BOTTOM);
         const bottomMessage = this.personalityManager.getRandomMessage('bottom');
         feedback = bottomMessage || 'Good depth - Push up';
@@ -98,7 +98,7 @@ class PushupDetector {
     }
 
     if (state === ExerciseState.BOTTOM) {
-      if (smoothElbow > 110) {
+      if (smoothElbow > 100) {
         this.stateMachine.changeState(ExerciseState.ASCENDING);
         const ascendMessage = this.personalityManager.getRandomMessage('ascending');
         feedback = ascendMessage || 'Ascending - Keep pushing';
@@ -106,7 +106,7 @@ class PushupDetector {
     }
 
     if (state === ExerciseState.ASCENDING) {
-      if (smoothElbow > 150) {
+      if (smoothElbow > 140) {
         const repData = this.stateMachine.completeRep();
         if (repData) {
           const repMessage = this.personalityManager.getRandomMessage('repComplete');
