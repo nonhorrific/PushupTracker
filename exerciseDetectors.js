@@ -1,8 +1,10 @@
 class PushupDetector {
-  constructor() {
+  constructor(audioManager, personalityManager, personalBestManager) {
     this.stateMachine = new RepStateMachine('pushup');
     this.formValidator = new PushupFormValidator();
-    this.feedbackManager = new FeedbackManager();
+    this.feedbackManager = new FeedbackManager(audioManager, personalityManager);
+    this.personalityManager = personalityManager;
+    this.personalBestManager = personalBestManager;
     this.elbowBuffer = new AngleBuffer(5);
     this.bodyBuffer = new AngleBuffer(5);
     this.hipKneeBuffer = new AngleBuffer(5);
@@ -72,7 +74,8 @@ class PushupDetector {
       if (smoothElbow > 150 && smoothBody >= 140 && this.stateMachine.canStartNewRep()) {
         this.stateMachine.changeState(ExerciseState.TOP);
         if (formIssues.length === 0) {
-          feedback = 'Ready - Go down slowly';
+          const readyMessage = this.personalityManager.getRandomMessage('ready');
+          feedback = readyMessage || 'Ready - Go down slowly';
         }
       }
     }
@@ -80,22 +83,25 @@ class PushupDetector {
     if (state === ExerciseState.TOP || state === ExerciseState.READY) {
       if (smoothElbow < 140) {
         this.stateMachine.changeState(ExerciseState.DESCENDING);
-        feedback = 'Descending - Keep control';
+        const descendMessage = this.personalityManager.getRandomMessage('descending');
+        feedback = descendMessage || 'Descending - Keep control';
       }
     }
 
     if (state === ExerciseState.DESCENDING) {
       if (smoothElbow < 100) {
         this.stateMachine.changeState(ExerciseState.BOTTOM);
-        feedback = 'Good depth - Push up';
-        this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, 'Push up');
+        const bottomMessage = this.personalityManager.getRandomMessage('bottom');
+        feedback = bottomMessage || 'Good depth - Push up';
+        this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, bottomMessage || 'Push up');
       }
     }
 
     if (state === ExerciseState.BOTTOM) {
       if (smoothElbow > 110) {
         this.stateMachine.changeState(ExerciseState.ASCENDING);
-        feedback = 'Ascending - Keep pushing';
+        const ascendMessage = this.personalityManager.getRandomMessage('ascending');
+        feedback = ascendMessage || 'Ascending - Keep pushing';
       }
     }
 
@@ -103,11 +109,22 @@ class PushupDetector {
       if (smoothElbow > 150) {
         const repData = this.stateMachine.completeRep();
         if (repData) {
-          feedback = `Excellent! Rep ${repData.count} - Quality: ${repData.quality}%`;
-          this.feedbackManager.speak(
-            FeedbackPriority.REP_COUNT,
-            `Good rep. Total ${repData.count}`
-          );
+          const repMessage = this.personalityManager.getRandomMessage('repComplete');
+          feedback = repMessage || `Excellent! Rep ${repData.count}`;
+
+          const currentBest = this.personalBestManager.getBestScore('pushup');
+          if (repData.count > currentBest) {
+            const recordMessage = this.personalityManager.getRandomMessage('newRecord');
+            this.feedbackManager.speak(FeedbackPriority.REP_COUNT, recordMessage || 'New record!');
+          } else if (repData.count === currentBest - 2) {
+            const approachMessage = this.personalityManager.getRandomMessage('approachingRecord');
+            this.feedbackManager.speak(FeedbackPriority.ENCOURAGEMENT, approachMessage || 'Two more for a record!');
+          } else {
+            this.feedbackManager.speak(
+              FeedbackPriority.REP_COUNT,
+              repMessage || `Rep ${repData.count}`
+            );
+          }
         }
       }
     }
@@ -154,10 +171,12 @@ class PushupDetector {
 }
 
 class SquatDetector {
-  constructor() {
+  constructor(audioManager, personalityManager, personalBestManager) {
     this.stateMachine = new RepStateMachine('squat');
     this.formValidator = new SquatFormValidator();
-    this.feedbackManager = new FeedbackManager();
+    this.feedbackManager = new FeedbackManager(audioManager, personalityManager);
+    this.personalityManager = personalityManager;
+    this.personalBestManager = personalBestManager;
     this.kneeBuffer = new AngleBuffer(5);
     this.backBuffer = new AngleBuffer(5);
     this.hipBuffer = new AngleBuffer(5);
@@ -227,7 +246,8 @@ class SquatDetector {
       if (smoothKnee > 150 && smoothBack >= 120 && this.stateMachine.canStartNewRep()) {
         this.stateMachine.changeState(ExerciseState.TOP);
         if (formIssues.length === 0) {
-          feedback = 'Ready - Squat down slowly';
+          const readyMessage = this.personalityManager.getRandomMessage('ready');
+          feedback = readyMessage || 'Ready - Squat down slowly';
         }
       }
     }
@@ -235,22 +255,25 @@ class SquatDetector {
     if (state === ExerciseState.TOP || state === ExerciseState.READY) {
       if (smoothKnee < 140) {
         this.stateMachine.changeState(ExerciseState.DESCENDING);
-        feedback = 'Descending - Control the movement';
+        const descendMessage = this.personalityManager.getRandomMessage('descending');
+        feedback = descendMessage || 'Descending - Control the movement';
       }
     }
 
     if (state === ExerciseState.DESCENDING) {
       if (smoothKnee < 110) {
         this.stateMachine.changeState(ExerciseState.BOTTOM);
-        feedback = 'Good depth - Stand up';
-        this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, 'Stand up');
+        const bottomMessage = this.personalityManager.getRandomMessage('bottom');
+        feedback = bottomMessage || 'Good depth - Stand up';
+        this.feedbackManager.speak(FeedbackPriority.INSTRUCTION, bottomMessage || 'Stand up');
       }
     }
 
     if (state === ExerciseState.BOTTOM) {
       if (smoothKnee > 120) {
         this.stateMachine.changeState(ExerciseState.ASCENDING);
-        feedback = 'Ascending - Drive through heels';
+        const ascendMessage = this.personalityManager.getRandomMessage('ascending');
+        feedback = ascendMessage || 'Ascending - Drive through heels';
       }
     }
 
@@ -258,11 +281,22 @@ class SquatDetector {
       if (smoothKnee > 150) {
         const repData = this.stateMachine.completeRep();
         if (repData) {
-          feedback = `Perfect! Rep ${repData.count} - Quality: ${repData.quality}%`;
-          this.feedbackManager.speak(
-            FeedbackPriority.REP_COUNT,
-            `Good rep. Total ${repData.count}`
-          );
+          const repMessage = this.personalityManager.getRandomMessage('repComplete');
+          feedback = repMessage || `Perfect! Rep ${repData.count}`;
+
+          const currentBest = this.personalBestManager.getBestScore('squat');
+          if (repData.count > currentBest) {
+            const recordMessage = this.personalityManager.getRandomMessage('newRecord');
+            this.feedbackManager.speak(FeedbackPriority.REP_COUNT, recordMessage || 'New record!');
+          } else if (repData.count === currentBest - 2) {
+            const approachMessage = this.personalityManager.getRandomMessage('approachingRecord');
+            this.feedbackManager.speak(FeedbackPriority.ENCOURAGEMENT, approachMessage || 'Two more for a record!');
+          } else {
+            this.feedbackManager.speak(
+              FeedbackPriority.REP_COUNT,
+              repMessage || `Rep ${repData.count}`
+            );
+          }
         }
       }
     }

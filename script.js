@@ -1,6 +1,11 @@
 let detector, video, canvas, ctx;
 let selectedExercise = null;
 let exerciseDetector = null;
+let personalityManager = null;
+let personalBestManager = null;
+let audioManager = null;
+let currentBestScore = 0;
+let hasShownNewRecord = false;
 
 function switchScreen(from, to) {
   document.getElementById(from).classList.remove('active');
@@ -42,19 +47,22 @@ async function initializeTracker() {
       { modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER }
     );
 
+    currentBestScore = personalBestManager.getBestScore(selectedExercise);
+    hasShownNewRecord = false;
+
     if (selectedExercise === 'pushup') {
-      exerciseDetector = new PushupDetector();
+      exerciseDetector = new PushupDetector(audioManager, personalityManager, personalBestManager);
     } else if (selectedExercise === 'squat') {
-      exerciseDetector = new SquatDetector();
+      exerciseDetector = new SquatDetector(audioManager, personalityManager, personalBestManager);
     }
 
     document.getElementById('status-text').textContent = 'Ready';
     document.getElementById('feedback').textContent = 'Get into position and start your exercise';
 
-    const exerciseName = selectedExercise === 'pushup' ? 'push-ups' : 'squats';
-    const utterance = new SpeechSynthesisUtterance(`Starting ${exerciseName} tracker. Get into position.`);
-    utterance.rate = 1.1;
-    speechSynthesis.speak(utterance);
+    const startMessage = personalityManager.getRandomMessage('starting');
+    if (audioManager && startMessage) {
+      await audioManager.speak(startMessage, personalityManager.getPersonality());
+    }
 
     detect();
   } catch (error) {
@@ -82,7 +90,8 @@ async function detect() {
 }
 
 function updateUI(result) {
-  document.querySelector('.rep-number').textContent = result.repCount;
+  const repCount = result.repCount;
+  document.querySelector('.rep-number').textContent = repCount;
   document.getElementById('feedback').textContent = result.feedback;
 
   if (selectedExercise === 'pushup') {
@@ -94,6 +103,26 @@ function updateUI(result) {
   }
 
   document.getElementById('confidence-value').textContent = `${result.confidence}%`;
+
+  const bestComparison = document.getElementById('best-comparison');
+  if (currentBestScore > 0) {
+    if (repCount > currentBestScore) {
+      bestComparison.textContent = `🔥 NEW RECORD! +${repCount - currentBestScore}`;
+      if (!hasShownNewRecord) {
+        showNewRecordAnimation();
+        hasShownNewRecord = true;
+        personalBestManager.updateBestScore(selectedExercise, repCount);
+        currentBestScore = repCount;
+      }
+    } else if (repCount === currentBestScore) {
+      bestComparison.textContent = `Tied with best!`;
+    } else {
+      const remaining = currentBestScore - repCount;
+      bestComparison.textContent = `${remaining} away from best`;
+    }
+  } else {
+    bestComparison.textContent = '';
+  }
 
   const statusDot = document.querySelector('.status-dot');
   const statusText = document.getElementById('status-text');
@@ -124,6 +153,19 @@ function updateUI(result) {
       statusText.textContent = 'Rep Complete';
       break;
   }
+}
+
+function showNewRecordAnimation() {
+  const overlay = document.getElementById('new-record-overlay');
+  overlay.classList.remove('hidden');
+  overlay.classList.add('show');
+
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+    }, 300);
+  }, 2000);
 }
 
 function drawKeypoints(keypoints) {
@@ -173,6 +215,22 @@ function drawSkeleton(keypoints) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  personalityManager = new PersonalityManager();
+  personalBestManager = new PersonalBestManager();
+  audioManager = new AudioManager('sk_187d921e3f95c43e091a0f059bd0c70eb88580523a1daf0c');
+
+  updatePersonalitySelection();
+  updateBestScoreDisplays();
+
+  const personalityCards = document.querySelectorAll('.personality-card');
+  personalityCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const personality = card.dataset.personality;
+      personalityManager.savePersonality(personality);
+      updatePersonalitySelection();
+    });
+  });
+
   const exerciseCards = document.querySelectorAll('.exercise-card');
   const backBtn = document.getElementById('back-btn');
 
@@ -204,6 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
       video.srcObject.getTracks().forEach(track => track.stop());
     }
 
+    if (audioManager) {
+      audioManager.stop();
+    }
+
     speechSynthesis.cancel();
 
     if (exerciseDetector) {
@@ -211,7 +273,28 @@ document.addEventListener('DOMContentLoaded', () => {
       exerciseDetector = null;
     }
 
+    updateBestScoreDisplays();
+
     switchScreen('tracker-screen', 'selection-screen');
     selectedExercise = null;
   });
 });
+
+function updatePersonalitySelection() {
+  const selectedPersonality = personalityManager.getPersonality();
+  document.querySelectorAll('.personality-card').forEach(card => {
+    if (card.dataset.personality === selectedPersonality) {
+      card.classList.add('selected');
+    } else {
+      card.classList.remove('selected');
+    }
+  });
+}
+
+function updateBestScoreDisplays() {
+  const pushupBest = personalBestManager.getBestScore('pushup');
+  const squatBest = personalBestManager.getBestScore('squat');
+
+  document.querySelector('.best-score[data-exercise="pushup"]').textContent = pushupBest;
+  document.querySelector('.best-score[data-exercise="squat"]').textContent = squatBest;
+}

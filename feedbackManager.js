@@ -7,7 +7,9 @@ const FeedbackPriority = {
 };
 
 class FeedbackManager {
-  constructor() {
+  constructor(audioManager, personalityManager) {
+    this.audioManager = audioManager;
+    this.personalityManager = personalityManager;
     this.lastFeedbackByCategory = {};
     this.categoryMinInterval = {
       [FeedbackPriority.REP_COUNT]: 1000,
@@ -41,7 +43,7 @@ class FeedbackManager {
     return true;
   }
 
-  speak(category, message) {
+  async speak(category, message) {
     if (!this.canSpeak(category, message)) {
       return false;
     }
@@ -53,10 +55,15 @@ class FeedbackManager {
     this.lastFeedbackByCategory[categoryKey] = now;
     this.lastFeedbackMessage[messageKey] = now;
 
-    speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.rate = 1.1;
-    speechSynthesis.speak(utterance);
+    if (this.audioManager && this.personalityManager) {
+      const personality = this.personalityManager.getPersonality();
+      await this.audioManager.speak(message, personality);
+    } else {
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.rate = 1.1;
+      speechSynthesis.speak(utterance);
+    }
 
     return true;
   }

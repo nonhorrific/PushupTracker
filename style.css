@@ -64,7 +64,7 @@ body {
 
 .header-section {
   text-align: center;
-  margin-bottom: 64px;
+  margin-bottom: 48px;
   animation: fadeInDown 0.8s ease-out;
 }
 
@@ -94,6 +94,133 @@ body {
   font-size: 20px;
   color: var(--text-secondary);
   font-weight: 400;
+}
+
+.personality-section {
+  margin-bottom: 48px;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+}
+
+.personality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  max-width: 800px;
+  margin: 0 auto 32px;
+}
+
+.personality-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px 16px;
+  cursor: pointer;
+  transition: var(--transition);
+  overflow: hidden;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.personality-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  opacity: 0;
+  transition: var(--transition);
+  border-radius: 16px;
+}
+
+.personality-card:hover::before {
+  opacity: 0.08;
+}
+
+.personality-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-primary);
+  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.15);
+}
+
+.personality-card.selected {
+  border-color: var(--accent-secondary);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(0, 255, 136, 0.05));
+}
+
+.personality-card.selected::before {
+  opacity: 0.1;
+}
+
+.personality-accent {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.personality-card.selected .personality-accent {
+  opacity: 1;
+}
+
+.personality-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 12px;
+  transition: var(--transition);
+}
+
+.personality-card:hover .personality-icon {
+  background: rgba(0, 212, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.personality-card.selected .personality-icon {
+  background: rgba(0, 255, 136, 0.2);
+}
+
+.personality-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--accent-primary);
+}
+
+.personality-card.selected .personality-icon svg {
+  color: var(--accent-secondary);
+}
+
+.personality-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  position: relative;
+  z-index: 1;
+  color: var(--text-primary);
+}
+
+.personality-card p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 1;
 }
 
 .exercise-grid {
@@ -197,6 +324,32 @@ body {
   color: var(--text-secondary);
   position: relative;
   z-index: 1;
+}
+
+.personal-best-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 12px;
+  padding: 6px 12px;
+  z-index: 2;
+}
+
+.trophy-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-secondary);
+}
+
+.best-score {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-secondary);
 }
 
 .features {
@@ -348,6 +501,81 @@ canvas {
   font-weight: 600;
   color: var(--text-secondary);
   margin-top: 4px;
+  letter-spacing: 2px;
+}
+
+.best-comparison {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-secondary);
+  margin-top: 8px;
+  min-height: 18px;
+}
+
+.new-record-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.new-record-overlay.hidden {
+  display: none;
+}
+
+.new-record-overlay.show {
+  display: block;
+  opacity: 1;
+  animation: recordPulse 0.6s ease-out;
+}
+
+@keyframes recordPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.record-content {
+  background: rgba(10, 14, 39, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 32px 48px;
+  border: 2px solid var(--accent-secondary);
+  box-shadow: 0 0 40px rgba(0, 255, 136, 0.4);
+  text-align: center;
+}
+
+.record-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: bounce 0.6s ease;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.record-text {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--accent-secondary);
   letter-spacing: 2px;
 }
 

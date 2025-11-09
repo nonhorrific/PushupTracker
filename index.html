@@ -15,6 +15,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
   <script src="poseUtils.js"></script>
+  <script src="supabaseClient.js"></script>
+  <script src="personalBestManager.js"></script>
+  <script src="personalityMessages.js"></script>
+  <script src="audioManager.js"></script>
   <script src="feedbackManager.js"></script>
   <script src="stateMachine.js"></script>
   <script src="formValidators.js"></script>
@@ -28,6 +32,48 @@
         <p class="subtitle">Real-time pose detection with voice feedback</p>
       </div>
 
+      <div class="personality-section">
+        <h2 class="section-title">Choose Your Coach</h2>
+        <div class="personality-grid">
+          <button class="personality-card" data-personality="military">
+            <div class="personality-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <h3>Military Sergeant</h3>
+            <p>Strict & commanding</p>
+            <div class="personality-accent"></div>
+          </button>
+
+          <button class="personality-card" data-personality="popup_girl">
+            <div class="personality-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            </div>
+            <h3>Pop-up Girl</h3>
+            <p>Energetic & bubbly</p>
+            <div class="personality-accent"></div>
+          </button>
+
+          <button class="personality-card" data-personality="gym_bro">
+            <div class="personality-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6.5 6h.01M6.5 18h.01M17.5 6h.01M17.5 18h.01"/>
+                <path d="M6 9h12M6 15h12"/>
+                <path d="M9 6v12M15 6v12"/>
+              </svg>
+            </div>
+            <h3>Gym Bro</h3>
+            <p>Casual & supportive</p>
+            <div class="personality-accent"></div>
+          </button>
+        </div>
+      </div>
+
       <div class="exercise-grid">
         <button class="exercise-card" data-exercise="pushup">
           <div class="exercise-icon">
@@ -37,6 +83,17 @@
           </div>
           <h2>Push-Ups</h2>
           <p>Track your form and count reps</p>
+          <div class="personal-best-badge">
+            <svg class="trophy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+              <path d="M4 22h16"/>
+              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+              <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+            </svg>
+            <span class="best-score" data-exercise="pushup">0</span>
+          </div>
           <div class="card-accent"></div>
         </button>
 
@@ -48,6 +105,17 @@
           </div>
           <h2>Squats</h2>
           <p>Perfect your squat technique</p>
+          <div class="personal-best-badge">
+            <svg class="trophy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+              <path d="M4 22h16"/>
+              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+              <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+            </svg>
+            <span class="best-score" data-exercise="squat">0</span>
+          </div>
           <div class="card-accent"></div>
         </button>
       </div>
@@ -89,6 +157,13 @@
           <div id="rep-counter" class="rep-counter">
             <div class="rep-number">0</div>
             <div class="rep-label">REPS</div>
+            <div id="best-comparison" class="best-comparison"></div>
+          </div>
+          <div id="new-record-overlay" class="new-record-overlay hidden">
+            <div class="record-content">
+              <div class="record-icon">🏆</div>
+              <div class="record-text">NEW RECORD!</div>
+            </div>
           </div>
         </div>
       </div>
