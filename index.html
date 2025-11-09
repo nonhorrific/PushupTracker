@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Push-up Tracker</title>
+  <style>
+    video { width: 480px; border-radius: 10px; }
+    #feedback { font-size: 1.2em; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Push-up Tracker Demo</h1>
+  <video id="video" autoplay></video>
+  <div id="feedback">Initializing...</div>
+  <script>
+    const video = document.getElementById('video');
+    const feedback = document.getElementById('feedback');
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+      video.srcObject = stream;
+    });
+
+    async function sendFrame() {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg'));
+      const formData = new FormData();
+      formData.append('file', blob, 'frame.jpg');
+      const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+      const data = await res.json();
+      feedback.textContent = data.message + (data.elbow_angle ? ` (Angle: ${data.elbow_angle})` : '');
+    }
+
+    setInterval(sendFrame, 1500); // send every 1.5s
+  </script>
+</body>
+</html>
