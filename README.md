@@ -1,5 +1,5 @@
 
-# 💪 Push-Up Tracker (Web Voice Edition)
+# 💪 FormAI (Web Voice Edition)
 
 AI-powered push-up tracker that runs **entirely in your browser** — no installs, no servers.  
 Uses **TensorFlow.js** and **Web Speech API** to track your form, count reps, and give **real-time voice feedback**.
