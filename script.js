@@ -1,36 +1,6 @@
 let detector, video, canvas, ctx;
-let counter = 0, stage = null, lastSpeak = 0;
-const cooldown = 1500;
 let selectedExercise = null;
-
-function speak(text) {
-  const now = Date.now();
-  if (now - lastSpeak > cooldown) {
-    speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 1.1;
-    speechSynthesis.speak(utter);
-    lastSpeak = now;
-  }
-}
-
-function angle(a, b, c) {
-  const ab = [a.x - b.x, a.y - b.y];
-  const cb = [c.x - b.x, c.y - b.y];
-  const dot = ab[0]*cb[0] + ab[1]*cb[1];
-  const cross = ab[0]*cb[1] - ab[1]*cb[0];
-  let radians = Math.atan2(cross, dot);
-  let deg = Math.abs(radians * 180 / Math.PI);
-  if (deg > 180) deg = 360 - deg;
-  return deg;
-}
-
-function updateUI(repCount, elbowAngle, bodyAngle, feedbackText) {
-  document.querySelector('.rep-number').textContent = repCount;
-  document.getElementById('elbow-angle').textContent = `${elbowAngle.toFixed(0)}°`;
-  document.getElementById('body-angle').textContent = `${bodyAngle.toFixed(0)}°`;
-  document.getElementById('feedback').textContent = feedbackText;
-}
+let exerciseDetector = null;
 
 function switchScreen(from, to) {
   document.getElementById(from).classList.remove('active');
@@ -41,7 +11,12 @@ function switchScreen(from, to) {
 
 async function setupCamera() {
   video = document.getElementById('video');
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
+  });
   video.srcObject = stream;
   await new Promise(r => video.onloadedmetadata = r);
   return video;
@@ -64,14 +39,22 @@ async function initializeTracker() {
 
     detector = await poseDetection.createDetector(
       poseDetection.SupportedModels.MoveNet,
-      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER }
     );
+
+    if (selectedExercise === 'pushup') {
+      exerciseDetector = new PushupDetector();
+    } else if (selectedExercise === 'squat') {
+      exerciseDetector = new SquatDetector();
+    }
 
     document.getElementById('status-text').textContent = 'Ready';
     document.getElementById('feedback').textContent = 'Get into position and start your exercise';
 
     const exerciseName = selectedExercise === 'pushup' ? 'push-ups' : 'squats';
-    speak(`Starting ${exerciseName} tracker. Please get into position.`);
+    const utterance = new SpeechSynthesisUtterance(`Starting ${exerciseName} tracker. Get into position.`);
+    utterance.rate = 1.1;
+    speechSynthesis.speak(utterance);
 
     detect();
   } catch (error) {
@@ -88,103 +71,103 @@ async function detect() {
 
   if (poses.length > 0) {
     const kp = poses[0].keypoints;
+    const result = exerciseDetector.detect(kp);
 
-    if (selectedExercise === 'pushup') {
-      detectPushup(kp);
-    } else if (selectedExercise === 'squat') {
-      detectSquat(kp);
-    }
-
-    kp.forEach(k => {
-      if (k.score > 0.4) {
-        ctx.beginPath();
-        ctx.arc(k.x, k.y, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = "#00d4ff";
-        ctx.fill();
-      }
-    });
+    updateUI(result);
+    drawKeypoints(kp);
+    drawSkeleton(kp);
   }
 
   requestAnimationFrame(detect);
 }
 
-function detectPushup(kp) {
-  const leftShoulder = kp.find(k => k.name === "left_shoulder");
-  const leftElbow = kp.find(k => k.name === "left_elbow");
-  const leftWrist = kp.find(k => k.name === "left_wrist");
-  const leftHip = kp.find(k => k.name === "left_hip");
-  const leftKnee = kp.find(k => k.name === "left_knee");
+function updateUI(result) {
+  document.querySelector('.rep-number').textContent = result.repCount;
+  document.getElementById('feedback').textContent = result.feedback;
 
-  if (!leftShoulder || !leftElbow || !leftWrist || !leftHip || !leftKnee) {
-    updateUI(counter, 0, 0, 'Position yourself so your full body is visible');
-    return;
+  if (selectedExercise === 'pushup') {
+    document.getElementById('elbow-angle').textContent = `${result.angles.elbow}°`;
+    document.getElementById('body-angle').textContent = `${result.angles.body}°`;
+  } else if (selectedExercise === 'squat') {
+    document.getElementById('elbow-angle').textContent = `${result.angles.knee}°`;
+    document.getElementById('body-angle').textContent = `${result.angles.back}°`;
   }
 
-  const elbowAngle = angle(leftShoulder, leftElbow, leftWrist);
-  const bodyAngle = angle(leftShoulder, leftHip, leftKnee);
+  const statusDot = document.querySelector('.status-dot');
+  const statusText = document.getElementById('status-text');
 
-  let feedbackText = 'Good form';
-
-  if (bodyAngle < 155) {
-    feedbackText = 'Keep your back straight';
-    speak("Keep your back straight");
+  switch (result.state) {
+    case 'READY':
+      statusDot.style.background = '#4ade80';
+      statusText.textContent = 'Ready';
+      break;
+    case 'DESCENDING':
+      statusDot.style.background = '#fbbf24';
+      statusText.textContent = 'Going Down';
+      break;
+    case 'BOTTOM':
+      statusDot.style.background = '#f87171';
+      statusText.textContent = 'At Bottom';
+      break;
+    case 'ASCENDING':
+      statusDot.style.background = '#60a5fa';
+      statusText.textContent = 'Going Up';
+      break;
+    case 'TOP':
+      statusDot.style.background = '#4ade80';
+      statusText.textContent = 'At Top';
+      break;
+    case 'COMPLETED':
+      statusDot.style.background = '#a78bfa';
+      statusText.textContent = 'Rep Complete';
+      break;
   }
-
-  if (elbowAngle > 160) {
-    stage = "up";
-    if (bodyAngle >= 155) {
-      feedbackText = 'Go down slowly';
-      speak("Go down");
-    }
-  }
-
-  if (elbowAngle < 90 && stage === "up") {
-    stage = "down";
-    counter++;
-    feedbackText = `Great rep! Total: ${counter}`;
-    speak(`Good rep. Push up. Total ${counter}`);
-  }
-
-  updateUI(counter, elbowAngle, bodyAngle, feedbackText);
 }
 
-function detectSquat(kp) {
-  const leftHip = kp.find(k => k.name === "left_hip");
-  const leftKnee = kp.find(k => k.name === "left_knee");
-  const leftAnkle = kp.find(k => k.name === "left_ankle");
-  const leftShoulder = kp.find(k => k.name === "left_shoulder");
-
-  if (!leftHip || !leftKnee || !leftAnkle || !leftShoulder) {
-    updateUI(counter, 0, 0, 'Position yourself so your full body is visible');
-    return;
-  }
-
-  const kneeAngle = angle(leftHip, leftKnee, leftAnkle);
-  const backAngle = angle(leftShoulder, leftHip, leftKnee);
-
-  let feedbackText = 'Good form';
-
-  if (backAngle < 140) {
-    feedbackText = 'Keep your back straighter';
-    speak("Keep your back straight");
-  }
-
-  if (kneeAngle > 160) {
-    stage = "up";
-    if (backAngle >= 140) {
-      feedbackText = 'Go down into squat';
-      speak("Go down");
+function drawKeypoints(keypoints) {
+  keypoints.forEach(kp => {
+    if (kp.score > 0.6) {
+      ctx.beginPath();
+      ctx.arc(kp.x, kp.y, 6, 0, 2 * Math.PI);
+      ctx.fillStyle = "#00d4ff";
+      ctx.fill();
+      ctx.strokeStyle = "#0066ff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     }
-  }
+  });
+}
 
-  if (kneeAngle < 100 && stage === "up") {
-    stage = "down";
-    counter++;
-    feedbackText = `Perfect squat! Total: ${counter}`;
-    speak(`Good rep. Stand up. Total ${counter}`);
-  }
+function drawSkeleton(keypoints) {
+  const connections = [
+    ['left_shoulder', 'right_shoulder'],
+    ['left_shoulder', 'left_elbow'],
+    ['left_elbow', 'left_wrist'],
+    ['right_shoulder', 'right_elbow'],
+    ['right_elbow', 'right_wrist'],
+    ['left_shoulder', 'left_hip'],
+    ['right_shoulder', 'right_hip'],
+    ['left_hip', 'right_hip'],
+    ['left_hip', 'left_knee'],
+    ['left_knee', 'left_ankle'],
+    ['right_hip', 'right_knee'],
+    ['right_knee', 'right_ankle']
+  ];
 
-  updateUI(counter, kneeAngle, backAngle, feedbackText);
+  ctx.strokeStyle = "#00d4ff";
+  ctx.lineWidth = 3;
+
+  connections.forEach(([start, end]) => {
+    const kpStart = keypoints.find(kp => kp.name === start);
+    const kpEnd = keypoints.find(kp => kp.name === end);
+
+    if (kpStart && kpEnd && kpStart.score > 0.6 && kpEnd.score > 0.6) {
+      ctx.beginPath();
+      ctx.moveTo(kpStart.x, kpStart.y);
+      ctx.lineTo(kpEnd.x, kpEnd.y);
+      ctx.stroke();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -197,8 +180,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const exerciseTitle = selectedExercise === 'pushup' ? 'Push-Up Tracker' : 'Squat Tracker';
       document.getElementById('exercise-title').textContent = exerciseTitle;
 
-      counter = 0;
-      stage = null;
+      if (selectedExercise === 'pushup') {
+        document.querySelector('.metric-label').textContent = 'Elbow Angle';
+        document.querySelectorAll('.metric-label')[1].textContent = 'Body Angle';
+      } else {
+        document.querySelector('.metric-label').textContent = 'Knee Angle';
+        document.querySelectorAll('.metric-label')[1].textContent = 'Back Angle';
+      }
 
       switchScreen('selection-screen', 'tracker-screen');
 
@@ -215,10 +203,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     speechSynthesis.cancel();
 
-    switchScreen('tracker-screen', 'selection-screen');
+    if (exerciseDetector) {
+      exerciseDetector.reset();
+      exerciseDetector = null;
+    }
 
-    counter = 0;
-    stage = null;
+    switchScreen('tracker-screen', 'selection-screen');
     selectedExercise = null;
   });
 });
